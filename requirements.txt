@@ -8,3 +8,4 @@ python-dotenv
 chromadb
 sentence-transformers
 torchvision
+langchain
