@@ -7,7 +7,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS
 st.markdown("""
 <style>
     .header-container {
@@ -17,29 +16,16 @@ st.markdown("""
         color: white;
         margin-bottom: 20px;
     }
-    .agent-badge {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 12px;
-        font-size: 0.8em;
-        font-weight: bold;
-        margin-bottom: 8px;
-    }
-    .triage { background-color: #fff3e0; color: #e65100; }
-    .scheduling { background-color: #e3f2fd; color: #1565c0; }
-    .eligibility { background-color: #f3e5f5; color: #6a1b9a; }
 </style>
 """, unsafe_allow_html=True)
 
-# Header
 st.markdown("""
 <div class="header-container">
     <h1 style="color:white; margin:0">🏥 Multi-Agent Medical System</h1>
-    <p style="color:#c8e6c9; margin:0">Orchestrated AI agents for triage, scheduling, and eligibility</p>
+    <p style="color:#c8e6c9; margin:0">Supervisor · Triage · Scheduling · Eligibility · RAG Knowledge Base</p>
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar
 with st.sidebar:
     st.markdown("### 🤖 Agent Architecture")
     st.markdown("""
@@ -49,7 +35,7 @@ with st.sidebar:
     - Assesses urgency
     - Determines specialty
     
-    🔵 **Scheduling Agent**  
+    🔵 **Scheduling Agent**
     - Finds providers
     - Books appointments
     - Processes referrals
@@ -58,30 +44,32 @@ with st.sidebar:
     - Checks insurance
     - Verifies eligibility
     - Prior authorization
+    
+    📚 **RAG Knowledge Base**
+    - Medical policies
+    - Insurance guidelines
+    - Scheduling rules
     """)
     st.markdown("---")
     st.markdown("### Try asking:")
     st.markdown("""
     - *"P001 has chest pain, book urgent cardiology"*
-    - *"Check P002 insurance then schedule dermatology"*
-    - *"Process referral for P003: knee pain, needs orthopedics"*
-    - *"Does P001 need prior auth for an MRI?"*
+    - *"Does P002 need prior auth for an MRI?"*
+    - *"What's the policy for new patients unseen 2 years?"*
+    - *"Process referral for P003: knee pain, orthopedics"*
     """)
-    if st.button("🗑️ Clear conversation"):
+    if st.button("🗑️ Clear"):
         st.session_state.messages = []
         st.rerun()
 
-# Initialize chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display history
 for message in st.session_state.messages:
     with st.chat_message(message["role"],
         avatar="🏥" if message["role"] == "assistant" else "👤"):
         st.write(message["content"])
 
-# Chat input
 query = st.chat_input("Describe the patient situation...")
 
 if query:

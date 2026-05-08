@@ -9,3 +9,4 @@ chromadb
 sentence-transformers
 torchvision
 langchain
+langchain-text-splitters
