@@ -10,3 +10,4 @@ sentence-transformers
 torchvision
 langchain
 langchain-text-splitters
+protobuf==3.20.3
