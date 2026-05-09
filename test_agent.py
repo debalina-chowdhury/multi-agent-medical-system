@@ -22,14 +22,14 @@ def test_knowledge_base_retrieves():
     result = retrieve_policies("prior authorization MRI")
     assert len(result) > 0
 
-def test_execute_tool_find_provider():
+def test_find_provider_tool():
     """Test find provider tool"""
-    from agents import execute_tool
-    result = execute_tool("find_provider", {"specialty": "cardiology"})
+    from agents import find_provider
+    result = find_provider.invoke({"specialty": "cardiology"})
     assert "DR00" in result
 
-def test_execute_tool_check_insurance():
+def test_check_insurance_tool():
     """Test insurance check tool"""
-    from agents import execute_tool
-    result = execute_tool("check_insurance", {"patient_id": "P001"})
+    from agents import check_insurance
+    result = check_insurance.invoke({"patient_id": "P001"})
     assert "active" in result.lower()
