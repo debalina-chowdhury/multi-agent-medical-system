@@ -1,3 +1,4 @@
+[![CI](https://github.com/debalina-chowdhury/multi-agent-medical-system/actions/workflows/python-app.yml/badge.svg)](https://github.com/debalina-chowdhury/multi-agent-medical-system/actions)
 # Multi-Agent Medical System with RAG
 
 A production-grade multi-agent AI system built with LangGraph, Anthropic Claude, ChromaDB, and Streamlit. Uses a supervisor-pattern architecture where a central orchestrator routes queries to specialized agents, each with their own tools and a shared RAG knowledge base.
