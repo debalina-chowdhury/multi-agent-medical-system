@@ -78,6 +78,7 @@ def route_supervisor(state: MultiAgentState) -> Literal["triage_agent", "schedul
 # ── SPECIALIZED AGENTS ────────────────────────────────────────────────────────
 def triage_agent(state: MultiAgentState) -> dict:
     """Assesses urgency and determines specialty needed."""
+    print("🔴 TRIAGE AGENT called") 
     system = """You are a medical triage specialist. 
     Assess patient symptoms for urgency and determine the right specialty.
     Use your tools to evaluate the situation, then summarize findings clearly.
@@ -93,17 +94,35 @@ def scheduling_agent(state: MultiAgentState) -> dict:
     Find providers, book appointments, and process referrals.
     Always use find_provider first — never ask users for internal provider IDs.
     Confirm all bookings clearly with reference numbers."""
-
+    print("🔵 SCHEDULING AGENT called")
     messages = [SystemMessage(content=system)] + state["messages"]
     response = scheduling_llm.invoke(messages)
     return {"messages": [response]}
 
-def eligibility_agent(state: MultiAgentState) -> dict:
-    """Handles insurance verification and prior authorization."""
-    system = """You are a medical insurance eligibility specialist.
-    Check insurance status, verify eligibility, and handle prior authorization.
-    Be clear about coverage, copays, and any authorization requirements."""
+# def eligibility_agent(state: MultiAgentState) -> dict:
+#     """Handles insurance verification and prior authorization."""
+#     system = """You are a medical insurance eligibility specialist.
+#     Check insurance status, verify eligibility, and handle prior authorization.
+#     Be clear about coverage, copays, and any authorization requirements."""
 
+#     messages = [SystemMessage(content=system)] + state["messages"]
+#     response = eligibility_llm.invoke(messages)
+#     return {"messages": [response]}
+
+
+def eligibility_agent(state: MultiAgentState) -> dict:
+    print("🟣 ELIGIBILITY AGENT called")
+    system = """You are a medical insurance eligibility specialist.
+    
+    When asked about insurance coverage or eligibility:
+    - ALWAYS call check_insurance first to get current status
+    - ALWAYS call verify_eligibility if a provider is mentioned
+    - ALWAYS call retrieve_medical_policy to check relevant policies
+    - Do NOT ask the user if they want you to verify — just do it
+    - Give a complete answer with all relevant details
+    
+    Never ask permission to use your tools. Use them proactively."""
+    
     messages = [SystemMessage(content=system)] + state["messages"]
     response = eligibility_llm.invoke(messages)
     return {"messages": [response]}
