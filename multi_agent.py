@@ -101,7 +101,15 @@ def scheduling_agent(state: MultiAgentState) -> dict:
 def eligibility_agent(state: MultiAgentState) -> dict:
     """Handles insurance verification and prior authorization."""
     system = """You are a medical insurance eligibility specialist.
-    Check insurance status, verify eligibility, and handle prior authorization.
+    
+    When asked about insurance coverage or eligibility:
+    - ALWAYS call check_insurance first to get current status
+    - ALWAYS call verify_eligibility if a provider is mentioned
+    - ALWAYS call retrieve_medical_policy to check relevant policies
+    - Do NOT ask the user if they want you to verify — just do it
+    - Give a complete answer with all relevant details
+    
+    Never ask permission to use your tools. Use them proactively.
     Be clear about coverage, copays, and any authorization requirements."""
 
     messages = [SystemMessage(content=system)] + state["messages"]
