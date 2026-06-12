@@ -81,6 +81,7 @@ Multi-agent coordination:
 - agents.py - Tool definitions for all specialized agents
 - knowledge_base.py - ChromaDB vector store and RAG retriever
 - multi_agent.py - LangGraph StateGraph, supervisor, and agent nodes
+- evaluate.py - Evaluation harness (routing, tool-use, end-to-end accuracy)
 - app.py - Streamlit frontend
 - requirements.txt - Dependencies
 - .env - API key not pushed to GitHub
@@ -90,6 +91,27 @@ Multi-agent coordination:
 
 Traditional single-agent systems with many tools become unreliable as complexity grows. The supervisor pattern solves this by giving each agent focused responsibility, letting the supervisor make routing decisions based on conversation context, and making the system easier to debug and extend.
 
+## Evaluation
+
+`evaluate.py` is a test harness that measures the system's reliability by tracing
+node-level execution across the graph. It reports three metrics:
+
+- **Routing accuracy** — does the supervisor route to the correct agent(s)?
+- **Tool-use accuracy** — are the expected tools invoked?
+- **End-to-end task success** — does the full pipeline (including multi-agent chains) produce the right outcome?
+
+Run it:
+
+```bash
+python evaluate.py
+```
+
+Results print to the console and save to `last_report.json` for tracking regressions.
+
+Building this harness surfaced two real reliability issues, both since fixed:
+- **Multi-step orchestration** — the supervisor ended early on requests needing several agents in sequence; it now tracks completed agents and chains them correctly.
+- **Non-deterministic routing** — repeated runs revealed the supervisor routed inconsistently; setting its temperature to 0 stabilized routing across the test suite.
+
 ## Future Improvements
 
 - Add LangGraph checkpointing for conversation persistence
@@ -97,6 +119,7 @@ Traditional single-agent systems with many tools become unreliable as complexity
 - Integrate real insurance eligibility APIs (Availity, Change Healthcare)
 - Add a fourth agent for billing and claims processing
 - Deploy with authentication for multi-user support
+- Move orchestration to deterministic planning to eliminate routing non-determinism
 
 ## Author
 
