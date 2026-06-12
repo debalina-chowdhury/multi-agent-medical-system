@@ -19,39 +19,54 @@ class MultiAgentState(TypedDict):
     current_agent: str
     urgency: str
     specialty: str
+    completed_agents: list
 
 # ── SUPERVISOR ────────────────────────────────────────────────────────────────
 supervisor_llm = ChatAnthropic(
     model="claude-sonnet-4-5",
-    anthropic_api_key=os.getenv("ANTHROPIC_API_KEY")
+    anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
+    temperature=0
 )
 
 
 def supervisor(state: MultiAgentState) -> dict:
     messages = state["messages"]
     last_message = messages[-1].content if messages else ""
-    
-    # Stop if last message is from an agent and has no tool calls
-    if len(messages) > 2:
-        last = messages[-1]
-        if isinstance(last, AIMessage) and not (hasattr(last, "tool_calls") and last.tool_calls):
-            return {"current_agent": "end"}
+    completed = state.get("completed_agents", [])
 
-    system = """You are a medical workflow supervisor.
-    Analyze the conversation and decide which agent should handle the next step.
-    
+    system = """You are a medical workflow supervisor orchestrating a multi-step task.
+    Decide which agent handles the NEXT step, considering what's ALREADY been done.
+
     Available agents:
     - triage: assess symptoms, urgency, determine specialty
     - scheduling: find providers, book appointments, process referrals
     - eligibility: check insurance, verify eligibility, prior authorization
-    - end: workflow is complete, user has all needed information
-    
-    If the last message is a complete answer with no pending actions, respond with: end
+    - end: the user's FULL request has been satisfied
+
+    IMPORTANT: A complex request may need MULTIPLE agents in sequence. Do not end
+    until every part of the user's original request is addressed. For example, if the
+    user asked to assess symptoms AND find a specialist AND check insurance, you must
+    run triage, then scheduling, then eligibility — only choose 'end' once all the
+    requested parts are done.
+
     Respond with ONLY one word: triage, scheduling, eligibility, or end."""
+
+    # Reconstruct the user's original request (first human message) so the
+    # supervisor reasons about the WHOLE task, not just the last reply.
+    original_request = ""
+    for m in messages:
+        if isinstance(m, HumanMessage):
+            original_request = m.content
+            break
 
     response = supervisor_llm.invoke([
         SystemMessage(content=system),
-        HumanMessage(content=f"Conversation so far: {last_message}\nCurrent agent: {state.get('current_agent', 'none')}\nWhich agent next?")
+        HumanMessage(content=(
+            f"User's original request: {original_request}\n"
+            f"Agents already completed: {list(set(completed)) or 'none'}\n"
+            f"Most recent message: {last_message}\n"
+            f"Which agent should handle the next step? (or 'end' if the full request is satisfied)"
+        ))
     ])
 
     decision = response.content.strip().lower()
@@ -78,6 +93,7 @@ def route_supervisor(state: MultiAgentState) -> Literal["triage_agent", "schedul
 # ── SPECIALIZED AGENTS ────────────────────────────────────────────────────────
 def triage_agent(state: MultiAgentState) -> dict:
     """Assesses urgency and determines specialty needed."""
+    print("🔴 TRIAGE AGENT called") 
     system = """You are a medical triage specialist. 
     Assess patient symptoms for urgency and determine the right specialty.
     Use your tools to evaluate the situation, then summarize findings clearly.
@@ -85,7 +101,8 @@ def triage_agent(state: MultiAgentState) -> dict:
 
     messages = [SystemMessage(content=system)] + state["messages"]
     response = triage_llm.invoke(messages)
-    return {"messages": [response]}
+    completed = state.get("completed_agents", [])
+    return {"messages": [response], "completed_agents": completed + ["triage"]}
 
 def scheduling_agent(state: MultiAgentState) -> dict:
     """Handles provider lookup, appointment booking, and referrals."""
@@ -93,13 +110,25 @@ def scheduling_agent(state: MultiAgentState) -> dict:
     Find providers, book appointments, and process referrals.
     Always use find_provider first — never ask users for internal provider IDs.
     Confirm all bookings clearly with reference numbers."""
-
+    print("🔵 SCHEDULING AGENT called")
     messages = [SystemMessage(content=system)] + state["messages"]
     response = scheduling_llm.invoke(messages)
-    return {"messages": [response]}
+    completed = state.get("completed_agents", [])
+    return {"messages": [response], "completed_agents": completed + ["scheduling"]}
+
+# def eligibility_agent(state: MultiAgentState) -> dict:
+#     """Handles insurance verification and prior authorization."""
+#     system = """You are a medical insurance eligibility specialist.
+#     Check insurance status, verify eligibility, and handle prior authorization.
+#     Be clear about coverage, copays, and any authorization requirements."""
+
+#     messages = [SystemMessage(content=system)] + state["messages"]
+#     response = eligibility_llm.invoke(messages)
+#     return {"messages": [response]}
+
 
 def eligibility_agent(state: MultiAgentState) -> dict:
-    """Handles insurance verification and prior authorization."""
+    print("🟣 ELIGIBILITY AGENT called")
     system = """You are a medical insurance eligibility specialist.
     
     When asked about insurance coverage or eligibility:
@@ -109,12 +138,12 @@ def eligibility_agent(state: MultiAgentState) -> dict:
     - Do NOT ask the user if they want you to verify — just do it
     - Give a complete answer with all relevant details
     
-    Never ask permission to use your tools. Use them proactively.
-    Be clear about coverage, copays, and any authorization requirements."""
-
+    Never ask permission to use your tools. Use them proactively."""
+    
     messages = [SystemMessage(content=system)] + state["messages"]
     response = eligibility_llm.invoke(messages)
-    return {"messages": [response]}
+    completed = state.get("completed_agents", [])
+    return {"messages": [response], "completed_agents": completed + ["eligibility"]}
 
 # ── TOOL ROUTING ──────────────────────────────────────────────────────────────
 def route_tools(state: MultiAgentState) -> Literal["triage_tools", "scheduling_tools", "eligibility_tools", "supervisor"]:
@@ -175,7 +204,8 @@ def run_multi_agent(user_query: str) -> str:
             "messages": [HumanMessage(content=user_query)],
             "current_agent": "",
             "urgency": "",
-            "specialty": ""
+            "specialty": "",
+            "completed_agents": []
         },
         config={"recursion_limit": 50}
     )
